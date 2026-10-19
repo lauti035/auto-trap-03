@@ -1,0 +1,214 @@
+
+--// TRAP 03 - PURPLE EDITION
+--// StarterPlayer > StarterPlayerScripts > LocalScript
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local purple = Color3.fromRGB(145, 60, 255)
+local lightPurple = Color3.fromRGB(220, 180, 255)
+local dark = Color3.fromRGB(35, 18, 55)
+
+local locked = true
+local busy = false
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "Trap03UI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local button = Instance.new("TextButton")
+button.Name = "TrapButton"
+button.Size = UDim2.fromOffset(78, 78)
+button.Position = UDim2.new(0.78, 0, 0.50, 0)
+button.BackgroundColor3 = purple
+button.Text = "TRAP"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBlack
+button.Active = true
+button.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = button
+
+local outline = Instance.new("UIStroke")
+outline.Color = lightPurple
+outline.Thickness = 2
+outline.Parent = button
+
+local lockButton = Instance.new("TextButton")
+lockButton.Name = "LockButton"
+lockButton.Size = UDim2.fromOffset(78, 32)
+lockButton.Position = UDim2.new(0.78, 0, 0.50, 82)
+lockButton.BackgroundColor3 = dark
+lockButton.Text = "🔒 Lock"
+lockButton.TextColor3 = Color3.new(1, 1, 1)
+lockButton.TextScaled = true
+lockButton.Font = Enum.Font.GothamBold
+lockButton.Parent = gui
+
+local lockCorner = Instance.new("UICorner")
+lockCorner.CornerRadius = UDim.new(0, 7)
+lockCorner.Parent = lockButton
+
+local credit = Instance.new("TextLabel")
+credit.Name = "Credit"
+credit.Size = UDim2.fromOffset(78, 20)
+credit.Position = UDim2.new(0.78, 0, 0.50, 116)
+credit.BackgroundTransparency = 1
+credit.Text = "by 03"
+credit.TextColor3 = lightPurple
+credit.TextScaled = true
+credit.Font = Enum.Font.GothamBold
+credit.Parent = gui
+
+-- Mantener el candado y el crédito junto al botón
+local function moveGroup(position)
+    button.Position = position
+    lockButton.Position = UDim2.new(
+        position.X.Scale, position.X.Offset,
+        position.Y.Scale, position.Y.Offset + 82
+    )
+    credit.Position = UDim2.new(
+        position.X.Scale, position.X.Offset,
+        position.Y.Scale, position.Y.Offset + 116
+    )
+end
+
+-- Lock / Unlock: controla únicamente el movimiento
+lockButton.Activated:Connect(function()
+    locked = not locked
+
+    if locked then
+        lockButton.Text = "🔒 Lock"
+        lockButton.BackgroundColor3 =
+            Color3.fromRGB(100, 35, 150)
+    else
+        lockButton.Text = "🔓 Unlock"
+        lockButton.BackgroundColor3 = dark
+    end
+end)
+
+-- Movimiento táctil y con ratón cuando está Unlock
+local dragging = false
+local dragStart
+local startPosition
+local activeInput
+
+button.InputBegan:Connect(function(input)
+    if locked then return end
+
+    if input.UserInputType == Enum.UserInputType.Touch
+        or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        activeInput = input
+        dragStart = input.Position
+        startPosition = button.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not dragging or locked then return end
+
+    if input == activeInput
+        or input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+
+        moveGroup(UDim2.new(
+            startPosition.X.Scale,
+            startPosition.X.Offset + delta.X,
+            startPosition.Y.Scale,
+            startPosition.Y.Offset + delta.Y
+        ))
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input == activeInput
+        or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+        activeInput = nil
+    end
+end)
+
+-- Etiqueta TRAP 03 sobre el personaje
+local function addLabel(character)
+    local head = character:WaitForChild("Head", 10)
+    if not head then return end
+
+    local old = head:FindFirstChild("Trap03Label")
+    if old then old:Destroy() end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "Trap03Label"
+    billboard.Adornee = head
+    billboard.Size = UDim2.fromOffset(150, 38)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.Text = "TRAP 03"
+    label.TextColor3 = lightPurple
+    label.TextStrokeColor3 = Color3.new(0, 0, 0)
+    label.TextStrokeTransparency = 0
+    label.Font = Enum.Font.GothamBlack
+    label.TextScaled = true
+    label.Parent = billboard
+end
+
+if player.Character then
+    task.spawn(addLabel, player.Character)
+end
+
+player.CharacterAdded:Connect(addLabel)
+
+-- Equipar y activar Trap con un toque
+local function placeTrap()
+    if busy then return end
+    busy = true
+
+    task.spawn(function()
+        local ok, err = pcall(function()
+            local character = player.Character
+            if not character then return end
+
+            local humanoid =
+                character:FindFirstChildOfClass("Humanoid")
+            if not humanoid then return end
+
+            local backpack = player:WaitForChild("Backpack")
+            local tool = character:FindFirstChild("Trap")
+                or backpack:FindFirstChild("Trap")
+
+            if not tool or not tool:IsA("Tool") then
+                warn("Trap 03: no se encontró Tool llamada Trap")
+                return
+            end
+
+            if tool.Parent ~= character then
+                humanoid:EquipTool(tool)
+                task.wait()
+            end
+
+            if tool.Parent == character then
+                tool:Activate()
+            end
+        end)
+
+        if not ok then
+            warn("Trap 03:", err)
+        end
+
+        task.wait(0.1)
+        busy = false
+    end)
+end
+
+button.Activated:Connect(placeTrap)
